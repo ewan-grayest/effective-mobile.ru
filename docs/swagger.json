@@ -1,0 +1,174 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Subscription Service API",
+    "description": "REST service for aggregating user online subscription data",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:8080/api/v1", "description": "Local development" }
+  ],
+  "tags": [
+    { "name": "subscriptions", "description": "Subscription CRUDL + total cost" }
+  ],
+  "paths": {
+    "/subscriptions": {
+      "post": {
+        "tags": ["subscriptions"],
+        "summary": "Create a subscription",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateRequest" },
+              "example": {
+                "service_name": "Yandex Plus",
+                "price": 400,
+                "user_id": "60601fee-2bf1-4721-ae6f-7636e79a0cba",
+                "start_date": "07-2025"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "get": {
+        "tags": ["subscriptions"],
+        "summary": "List subscriptions",
+        "parameters": [
+          { "name": "user_id",      "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Filter by user UUID" },
+          { "name": "service_name", "in": "query", "schema": { "type": "string" },                   "description": "Filter by service name" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Subscription" } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/subscriptions/total": {
+      "get": {
+        "tags": ["subscriptions"],
+        "summary": "Total subscription cost for a period",
+        "parameters": [
+          { "name": "from",               "in": "query", "required": true, "schema": { "type": "string", "example": "01-2025" }, "description": "Period start MM-YYYY" },
+          { "name": "to",                 "in": "query", "required": true, "schema": { "type": "string", "example": "12-2025" }, "description": "Period end MM-YYYY" },
+          { "name": "user_id",            "in": "query",                    "schema": { "type": "string", "format": "uuid" },     "description": "Filter by user UUID" },
+          { "name": "service_name",       "in": "query",                    "schema": { "type": "string" },                       "description": "Filter by service name" },
+          { "name": "end_date_calc_mode", "in": "query",                    "schema": { "type": "string", "enum": ["all", "with_end_date", "without_end_date"], "default": "all" }, "description": "Which subscriptions to include: all (default), only those with an end_date set, or only open-ended ones" }
+        ],
+        "responses": {
+          "200": { "description": "Total cost in rubles", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TotalAnswer" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/subscriptions/{id}": {
+      "get": {
+        "tags": ["subscriptions"],
+        "summary": "Get subscription by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "put": {
+        "tags": ["subscriptions"],
+        "summary": "Update subscription",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "delete": {
+        "tags": ["subscriptions"],
+        "summary": "Delete subscription",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "204": { "description": "No Content" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "id":           { "type": "string", "format": "uuid" },
+          "service_name": { "type": "string", "example": "Yandex Plus" },
+          "price":        { "type": "integer", "example": 400 },
+          "user_id":      { "type": "string", "format": "uuid" },
+          "start_date":   { "type": "string", "example": "07-2025" },
+          "end_date":     { "type": "string", "example": "12-2025", "nullable": true },
+          "created_at":   { "type": "string", "format": "date-time" },
+          "updated_at":   { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateRequest": {
+        "type": "object",
+        "required": ["service_name", "price", "user_id", "start_date"],
+        "properties": {
+          "service_name": { "type": "string", "example": "Yandex Plus" },
+          "price":        { "type": "integer", "minimum": 1, "example": 400 },
+          "user_id":      { "type": "string", "format": "uuid" },
+          "start_date":   { "type": "string", "example": "07-2025" },
+          "end_date":     { "type": "string", "example": "12-2025" }
+        }
+      },
+      "UpdateRequest": {
+        "type": "object",
+        "properties": {
+          "service_name": { "type": "string", "example": "Netflix" },
+          "price":        { "type": "integer", "minimum": 1, "example": 799 },
+          "start_date":   { "type": "string", "example": "01-2025" },
+          "end_date":     { "type": "string", "example": "06-2025" }
+        }
+      },
+      "TotalAnswer": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "example": 4800 }
+        }
+      },
+      "ErrorAnswer": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "example": "subscription not found" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest":    { "description": "Bad Request",            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorAnswer" } } } },
+      "NotFound":      { "description": "Not Found",              "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorAnswer" } } } },
+      "InternalError": { "description": "Internal Server Error",  "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorAnswer" } } } }
+    }
+  }
+}

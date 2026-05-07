@@ -1,0 +1,5 @@
+.env
+*.out
+subscription-service
+subscription-service-simple
+.vscode/
